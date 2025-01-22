@@ -41,7 +41,7 @@ async fn handle_connection(mut inbound: TcpStream) -> io::Result<()> {
             println!("CONNECT target: {}", target_address);
 
             // 连接到目标服务器
-            let outbound = TcpStream::connect(target_address).await?;
+            let mut outbound = TcpStream::connect(target_address).await?;
 
             // 向客户端发送 HTTP 200 响应，表示连接已建立
             let response = "HTTP/1.1 200 Connection Established\r\n\r\n";
