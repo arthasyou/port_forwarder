@@ -28,7 +28,7 @@ async fn handle_connection(mut inbound: TcpStream) -> io::Result<()> {
     }
 
     let request = String::from_utf8_lossy(&buffer[..bytes_read]);
-    println!("Received request: \n{}", request);
+    // println!("Received request: \n{}", request);
 
     // 检查是否为 CONNECT 请求
     if request.starts_with("CONNECT") {
@@ -38,7 +38,7 @@ async fn handle_connection(mut inbound: TcpStream) -> io::Result<()> {
             .next()
             .and_then(|line| line.split_whitespace().nth(1))
         {
-            println!("CONNECT target: {}", target_address);
+            // println!("CONNECT target: {}", target_address);
 
             // 连接到目标服务器
             let outbound = TcpStream::connect(target_address).await?;
@@ -60,42 +60,13 @@ async fn handle_connection(mut inbound: TcpStream) -> io::Result<()> {
             });
 
             let _ = tokio::try_join!(client_to_proxy, proxy_to_client);
+            // println!("Connection closed: socket resources released.");
         } else {
             eprintln!("Invalid CONNECT request.");
         }
 
         return Ok(());
     }
-
-    // 处理非 CONNECT 请求
-    let target_address =
-        if let Some(host_line) = request.lines().find(|line| line.starts_with("Host: ")) {
-            host_line.trim_start_matches("Host: ").trim().to_string()
-        } else {
-            eprintln!("No Host header found in request.");
-            return Ok(());
-        };
-
-    println!("Forwarding to target: {}", target_address);
-
-    let mut outbound = TcpStream::connect(target_address).await?;
-
-    // 转发请求数据到目标服务器
-    outbound.write_all(&buffer[..bytes_read]).await?;
-
-    // 双向转发数据
-    let (mut ri, mut wi) = io::split(inbound);
-    let (mut ro, mut wo) = io::split(outbound);
-
-    let client_to_proxy = tokio::spawn(async move {
-        io::copy(&mut ri, &mut wo).await.ok();
-    });
-
-    let proxy_to_client = tokio::spawn(async move {
-        io::copy(&mut ro, &mut wi).await.ok();
-    });
-
-    let _ = tokio::try_join!(client_to_proxy, proxy_to_client);
 
     Ok(())
 }
